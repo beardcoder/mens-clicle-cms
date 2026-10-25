@@ -17,14 +17,22 @@ export function EntryList({ name, def }: { name: string; def: CollectionDef }) {
 	const [data, setData] = useState<{ items: Entry[]; total: number } | null>(null)
 	const [q, setQ] = useState('')
 	const [status, setStatus] = useState('')
-	useEffect(() => {
-		const params = new URLSearchParams({ limit: '200' })
+	const PAGE = 100
+	/** `more` appends the next page, otherwise the list is reloaded from the start */
+	const load = (more = false) => {
+		const params = new URLSearchParams({
+			limit: String(PAGE),
+			offset: String(more ? (data?.items.length ?? 0) : 0),
+		})
 		if (q) params.set('q', q)
 		if (status) params.set('status', status)
-		const t = setTimeout(
-			() => get<typeof data>(`/collections/${name}?${params}`).then(setData, toastError),
-			q ? 200 : 0,
+		return get<{ items: Entry[]; total: number }>(`/collections/${name}?${params}`).then(
+			(res) => setData(more && data ? { ...res, items: [...data.items, ...res.items] } : res),
+			toastError,
 		)
+	}
+	useEffect(() => {
+		const t = setTimeout(load, q ? 200 : 0)
 		return () => clearTimeout(t)
 	}, [name, q, status])
 	const columns = (def.columns ?? []).map((c) => def.fields.find((f) => f.name === c)).filter((f) => !!f)
@@ -76,6 +84,11 @@ export function EntryList({ name, def }: { name: string; def: CollectionDef }) {
 				</tbody>
 			</table>
 			{data?.items.length === 0 && <p class="empty">Keine Einträge gefunden.</p>}
+			{data && data.items.length < data.total && (
+				<button type="button" class="add" onClick={() => load(true)}>
+					Mehr laden ({data.total - data.items.length})
+				</button>
+			)}
 		</div>
 	)
 }

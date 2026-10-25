@@ -1214,3 +1214,7 @@ label.inline {
 		position: static;
 	}
 }
+.more-tile {
+	aspect-ratio: auto;
+	min-height: 9rem;
+}

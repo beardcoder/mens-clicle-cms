@@ -134,6 +134,7 @@ export function MediaLibrary({
 	accept?: string
 }) {
 	const [items, setItems] = useState<Media[]>([])
+	const [total, setTotal] = useState(0)
 	const [folders, setFolders] = useState<{ folder: string; n: number }[]>([])
 	const [folder, setFolder] = useState<string | undefined>(undefined)
 	const [q, setQ] = useState('')
@@ -142,18 +143,23 @@ export function MediaLibrary({
 	const [dragOver, setDragOver] = useState(false)
 	const [busy, run] = useBusy()
 
-	const load = async () => {
-		const params = new URLSearchParams()
+	const PAGE = 120
+	/** `more` appends the next page, otherwise the list is reloaded from the start */
+	const load = async (more = false) => {
+		const params = new URLSearchParams({ limit: String(PAGE), offset: String(more ? items.length : 0) })
 		if (folder !== undefined) params.set('folder', folder)
 		if (q) params.set('q', q)
 		if (accept === 'image/*') params.set('type', 'image')
-		const res = await get<{ items: Media[]; folders: { folder: string; n: number }[] }>(`/media?${params}`)
+		const res = await get<{ items: Media[]; total: number; folders: { folder: string; n: number }[] }>(
+			`/media?${params}`,
+		)
 		res.items.forEach(cacheMedia)
-		setItems(res.items)
+		setItems(more ? [...items, ...res.items] : res.items)
+		setTotal(res.total)
 		setFolders(res.folders)
 	}
 	useEffect(() => {
-		const t = setTimeout(load, q ? 200 : 0)
+		const t = setTimeout(() => load(), q ? 200 : 0)
 		return () => clearTimeout(t)
 	}, [folder, q])
 
@@ -262,6 +268,11 @@ export function MediaLibrary({
 							<span class="media-name">{m.name}</span>
 						</button>
 					))}
+					{items.length < total && (
+						<button type="button" class="add more-tile" onClick={() => load(true)}>
+							Mehr laden ({total - items.length})
+						</button>
+					)}
 				</div>
 				{!onPick && active && (
 					<Details

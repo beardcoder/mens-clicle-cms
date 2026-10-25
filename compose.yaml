@@ -1,0 +1,15 @@
+# Local run (`docker compose up --build`) — also usable as a Coolify "Docker Compose" resource.
+services:
+  cms:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      SEED: ${SEED:-true}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-64}
+    volumes:
+      - cms-data:/app/data
+
+volumes:
+  cms-data:

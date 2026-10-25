@@ -6,7 +6,14 @@ import { publicApi } from './api/public'
 import { ContentError } from './fields'
 import { site } from './site'
 
-export const app = new Elysia()
+const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB ?? 64)
+
+export const app = new Elysia({ serve: { maxRequestBodySize: MAX_UPLOAD_MB * 1024 * 1024 } })
+	.headers({
+		'x-content-type-options': 'nosniff',
+		'x-frame-options': 'SAMEORIGIN',
+		'referrer-policy': 'strict-origin-when-cross-origin',
+	})
 	.onError(ContentError, ({ error }) => status(422, { message: 'Ungültige Eingabe', issues: error.issues }))
 	.get('/api/health', () => ({ ok: true }))
 	.use(authApi)
@@ -17,6 +24,7 @@ export const app = new Elysia()
 	.use(settingsApi)
 	.use(mediaApi)
 	.use(publicApi)
+	.all('/api/*', () => status(404, 'Nicht gefunden'))
 	// Admin SPA: Bun bundles the HTML import (HMR in development, embedded in the compiled binary)
 	.get('/admin', admin)
 	.get('/admin/*', admin)

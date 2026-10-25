@@ -1,4 +1,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
+import { existsSync, mkdtempSync, readdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { app } from '../src/app'
 import { seed } from '../src/seed'
 
@@ -72,9 +75,18 @@ describe('content API', () => {
 		expect(entry.slug).toBe('sommerfest')
 		expect(entry.url).toBe('/veranstaltungen/sommerfest')
 
+		const admin = await req('/api/collections/events?limit=10')
+		expect(admin.headers.get('content-type')).toContain('json')
+		expect((await admin.json()).total).toBeGreaterThan(0)
+		for (const path of ['/api/pages', '/api/media', '/api/settings', '/api/users'])
+			expect((await req(path)).headers.get('content-type')).toContain('json')
+
 		const list = await (await req('/api/content/events?filter=upcoming')).json()
 		expect(list.items.some((e: { id: number }) => e.id === entry.id)).toBeTrue()
-		expect((await req('/api/collections/unknown')).status).toBe(404)
+		const unknown = await req('/api/collections/unknown')
+		expect(unknown.status).toBe(404)
+		expect(unknown.headers.get('content-type') ?? '').not.toContain('html')
+		expect((await req('/api/gibt-es-nicht')).status).toBe(404)
 	})
 
 	test('uploads media and resolves it in page content', async () => {
@@ -148,5 +160,45 @@ describe('site', () => {
 		expect(preview.status).toBe(200)
 		expect(preview.headers.get('content-type')).toStartWith('text/html')
 		expect(await preview.text()).toStartWith('<!doctype html>')
+	})
+})
+
+describe('operations', () => {
+	test('backup contains database snapshot and uploads', async () => {
+		const res = await req('/api/backup')
+		expect(res.status).toBe(200)
+		expect(res.headers.get('content-disposition')).toContain('.tar.gz')
+		const dir = mkdtempSync(join(tmpdir(), 'cms-restore-'))
+		await new Bun.Archive(await res.bytes()).extract(dir)
+		expect(existsSync(join(dir, 'cms.db'))).toBeTrue()
+		expect(readdirSync(join(dir, 'uploads')).length).toBeGreaterThan(0)
+		const { Database } = await import('bun:sqlite')
+		const restored = new Database(join(dir, 'cms.db'), { readonly: true })
+		expect(restored.query<{ n: number }, []>('SELECT COUNT(*) AS n FROM pages').get()!.n).toBeGreaterThan(0)
+	})
+
+	test('security headers are set', async () => {
+		const res = await req('/')
+		expect(res.headers.get('x-content-type-options')).toBe('nosniff')
+		expect(res.headers.get('x-frame-options')).toBe('SAMEORIGIN')
+	})
+
+	test('secure cookie behind TLS proxy and login rate limit', async () => {
+		const saved = cookie
+		cookie = ''
+		const ok = await app.handle(
+			new Request('http://localhost/api/auth/login', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json', 'x-forwarded-proto': 'https' },
+				body: JSON.stringify({ email: 'a@b.de', password: 'password123' }),
+			}),
+		)
+		expect(ok.headers.get('set-cookie')).toContain('Secure')
+		let last = 0
+		for (let i = 0; i < 11; i++)
+			last = (await req('/api/auth/login', { method: 'POST', json: { email: 'a@b.de', password: 'falsch' } }))
+				.status
+		expect(last).toBe(429)
+		cookie = saved
 	})
 })

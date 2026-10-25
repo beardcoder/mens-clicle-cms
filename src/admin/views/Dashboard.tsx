@@ -57,6 +57,18 @@ export function Dashboard() {
 					</a>
 				</div>
 			</section>
+			<section class="panel">
+				<h2>Datensicherung</h2>
+				<p class="muted">
+					Lädt Datenbank und alle hochgeladenen Dateien als <code>.tar.gz</code> herunter. Wiederherstellen
+					per Kommandozeile: <code>cms restore backup.tar.gz</code> (bei gestopptem Server).
+				</p>
+				<div class="row">
+					<a href="/api/backup" class="button" download>
+						⬇ Backup herunterladen
+					</a>
+				</div>
+			</section>
 		</div>
 	)
 }

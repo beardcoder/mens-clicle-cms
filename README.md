@@ -8,6 +8,7 @@ bun run dev            # Entwicklung (Watch-Modus, HMR im Admin)
 bun --bun run start    # Produktion
 bun run build          # → dist/cms  (Single Binary inkl. Admin, CSS, Default-Config)
 ./dist/cms
+docker compose up --build   # oder als Container (siehe Deployment)
 ```
 
 Danach `http://localhost:3000/admin` öffnen. Beim ersten Start wird das Admin-Konto angelegt, und eine leere Datenbank bekommt Demo-Inhalte (abschalten mit `SEED=false`).
@@ -25,6 +26,7 @@ Danach `http://localhost:3000/admin` öffnen. Beim ersten Start wird das Admin-K
 | Rich Text / Markdown | `HTMLRewriter` als Sanitizer, `Bun.markdown` für Markdown |
 | Passwörter | `Bun.password` (argon2id), Sessions in SQLite, Cookie `HttpOnly; SameSite=Strict` |
 | Performance | Gerenderte Seiten werden im Speicher gecacht (inkl. gzip) und bei jeder Änderung invalidiert |
+| Betrieb | Dockerfile (distroless, non-root, Healthcheck), Backup-Download und `cms restore`, Graceful Shutdown, Security-Header, CI über GitHub Actions |
 | Qualität | TypeScript 7 nativ (`bun run typecheck`), Biome und `xss-scan` (`bun run lint`), `bun test`. TypeScript 5.9 liegt nur für `@kitajs/ts-html-plugin` bei, das die JS-API von TS braucht |
 
 ## Konfiguration: `cms.config.json`
@@ -102,7 +104,38 @@ Alle Felder kennen `label`, `help`, `required`, `default` und `width` (`full`/`h
 | `DATA_DIR` | `./data` (Datenbank, Uploads, Bild-Cache) |
 | `DATABASE` | `$DATA_DIR/cms.db` |
 | `CMS_CONFIG` | `./cms.config.json` |
-| `SEED` | `true` |
+| `SEED` | `true` (Demo-Inhalte bei leerer Datenbank) |
+| `MAX_UPLOAD_MB` | `64` (maximale Request-Größe für Uploads) |
+
+## Deployment mit Docker / Coolify
+
+Die `Dockerfile` baut in zwei Stufen. Zuerst laufen Tests und `bun build --compile`, dann kommt nur die Binary in ein **distroless**-Image (glibc, keine Shell, User `nonroot` mit UID 65532, ca. 64 MB komprimiert). Der `HEALTHCHECK` ruft `cms --health` auf, ein Stoppen per `SIGTERM` beendet laufende Requests und schließt die Datenbank sauber.
+
+**Coolify:**
+
+1. *New Resource → Public/Private Repository* wählen, Build Pack **Dockerfile**.
+2. *Ports Exposes*: `3000`. Domain eintragen, HTTPS übernimmt Coolify (Traefik).
+3. *Persistent Storage → Volume Mount*: Destination Path **`/app/data`**. Ohne Volume gehen Datenbank und Uploads beim nächsten Deploy verloren.
+4. Optional unter *Environment Variables*: `SEED=false` (keine Demo-Inhalte), `MAX_UPLOAD_MB`.
+5. Deployen und `https://<domain>/admin` öffnen. Der erste Besuch legt das Admin-Konto an, also **direkt nach dem Deploy erledigen**.
+
+Hinweise:
+
+- Hinter dem Proxy setzt das CMS das Session-Cookie anhand von `X-Forwarded-Proto` als `Secure`. Fehlgeschlagene Logins werden pro Client-IP begrenzt (10 in 15 Minuten).
+- Ein benanntes Volume übernimmt beim ersten Mounten die Rechte aus dem Image. Bei einem **Bind Mount** (Host-Verzeichnis) muss das Verzeichnis der UID 65532 gehören: `chown -R 65532:65532 /pfad`.
+- Änderungen an `cms.config.json` kommen per Redeploy ins Image (die Config ist in der Binary eingebettet). Alternativ eine Datei nach `/app/cms.config.json` mounten, dann reicht ein Neustart.
+- Alternativ `compose.yaml` als *Docker Compose*-Ressource verwenden, lokal genügt `docker compose up --build`.
+
+## Backup & Restore
+
+- **Backup:** Im Admin unter *Übersicht → Backup herunterladen* oder per `GET /api/backup` (mit Login). Geliefert wird ein `.tar.gz` mit einem konsistenten Datenbank-Snapshot (`VACUUM INTO`) und allen Uploads, gestreamt ohne Zwischendatei.
+- **Restore** bei gestopptem Server:
+
+  ```bash
+  ./dist/cms restore cms-backup.tar.gz
+  # Docker / Coolify (Container vorher stoppen):
+  docker run --rm -v <volume>:/app/data -v $PWD/cms-backup.tar.gz:/backup.tar.gz:ro <image> restore /backup.tar.gz
+  ```
 
 ## Projektstruktur
 

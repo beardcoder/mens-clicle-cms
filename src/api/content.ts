@@ -1,5 +1,7 @@
 import { Elysia, status, t } from 'elysia'
+import { backupStream } from '../backup'
 import { config } from '../config'
+import { db } from '../db'
 import { entries } from '../repo/entries'
 import { media } from '../repo/media'
 import { pages } from '../repo/pages'
@@ -27,14 +29,23 @@ export const configApi = new Elysia({ prefix: '/api' }).use(auth).guard({ auth: 
 			entries: entries.counts(),
 			media: media.count(),
 			users: users.count(),
-		})),
+		}))
+		.get('/backup', () => {
+			const name = `cms-backup-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.tar.gz`
+			return new Response(backupStream(db), {
+				headers: {
+					'content-type': 'application/gzip',
+					'content-disposition': `attachment; filename="${name}"`,
+				},
+			})
+		}),
 )
 
 export const pagesApi = new Elysia({ prefix: '/api/pages' }).use(auth).guard({ auth: true }, (app) =>
 	app
-		.get('/', () => pages.list())
+		.get('', () => pages.list())
 		.post(
-			'/',
+			'',
 			{ body: t.Object({ title: t.String({ minLength: 1 }), parentId: t.Optional(t.Nullable(t.Number())) }) },
 			({ body }) => pages.create(body),
 		)
@@ -78,7 +89,7 @@ export const entriesApi = new Elysia({ prefix: '/api/collections/:collection' })
 				if (!config.collections[(params as { collection: string }).collection]) return notFound()
 			})
 			.get(
-				'/',
+				'',
 				{
 					params: Collection,
 					query: t.Object({
@@ -91,7 +102,7 @@ export const entriesApi = new Elysia({ prefix: '/api/collections/:collection' })
 				({ params, query }) => entries.list(params.collection, query),
 			)
 			.get('/options', { params: Collection }, ({ params }) => entries.options(params.collection))
-			.post('/', { params: Collection, body: EntryBody }, ({ params, body }) =>
+			.post('', { params: Collection, body: EntryBody }, ({ params, body }) =>
 				entries.create(params.collection, body),
 			)
 			.get('/:id', { params: t.Object({ collection: t.String(), id: t.Number() }) }, ({ params }) => {
@@ -111,7 +122,7 @@ export const settingsApi = new Elysia({ prefix: '/api/settings' })
 	.use(auth)
 	.guard({ auth: true }, (app) =>
 		app
-			.get('/', () => settings.all())
+			.get('', () => settings.all())
 			.put(
 				'/:group',
 				{ params: t.Object({ group: t.String() }), body: t.Record(t.String(), t.Any()) },
@@ -122,7 +133,7 @@ export const settingsApi = new Elysia({ prefix: '/api/settings' })
 export const mediaApi = new Elysia({ prefix: '/api/media' }).use(auth).guard({ auth: true }, (app) =>
 	app
 		.get(
-			'/',
+			'',
 			{
 				query: t.Object({
 					folder: t.Optional(t.String()),
@@ -134,7 +145,7 @@ export const mediaApi = new Elysia({ prefix: '/api/media' }).use(auth).guard({ a
 			},
 			({ query }) => ({ ...media.list(query), folders: media.folders() }),
 		)
-		.post('/', { body: t.Object({ files: t.Files(), folder: t.Optional(t.String()) }) }, async ({ body }) =>
+		.post('', { body: t.Object({ files: t.Files(), folder: t.Optional(t.String()) }) }, async ({ body }) =>
 			Promise.all(body.files.map((f) => media.create(f, body.folder?.trim() ?? ''))),
 		)
 		.get('/:id', { params: Id }, ({ params }) => media.get(params.id) ?? notFound())

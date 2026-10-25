@@ -1,13 +1,12 @@
 import { Database } from 'bun:sqlite'
 import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { CACHE_DIR, DB_FILE, UPLOAD_DIR } from './paths'
 
-export const DATA_DIR = process.env.DATA_DIR ?? 'data'
-export const UPLOAD_DIR = join(DATA_DIR, 'uploads')
-export const CACHE_DIR = join(DATA_DIR, 'cache')
+export { CACHE_DIR, DATA_DIR, UPLOAD_DIR } from './paths'
+
 for (const dir of [UPLOAD_DIR, CACHE_DIR]) mkdirSync(dir, { recursive: true })
 
-export const db = new Database(process.env.DATABASE ?? join(DATA_DIR, 'cms.db'), {
+export const db = new Database(DB_FILE, {
 	create: true,
 	strict: true,
 })
