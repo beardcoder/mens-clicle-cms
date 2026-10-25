@@ -1,7 +1,7 @@
 /** @jsxImportSource @kitajs/html */
 // Block templates. Add a component here (key = block type from cms.config.json) to give a block
 // its own markup — blocks without a template are rendered by <GenericBlock> from their field definitions.
-// Content is untrusted: text goes into elements marked `safe` (escaped), `bun run lint` runs xss-scan.
+// Content is untrusted: Kita only escapes children of elements marked `safe` — use it for every text value.
 import { config } from '../config'
 import { type ExpandedBlock, expandEntry, type Link } from '../expand'
 import { markdown } from '../html'

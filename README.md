@@ -19,7 +19,7 @@ Danach `http://localhost:3000/admin` öffnen. Beim ersten Start wird das Admin-K
 | --- | --- |
 | Server | Elysia 2 (`2.0.0-rc.0`), TypeBox-Validierung, Auth per Macro (`{ auth: true }`) |
 | Datenbank | `bun:sqlite` (WAL, Migrationen über `PRAGMA user_version`), Inhalte als JSON-Spalten |
-| Frontend-Templating | **`@elysia/html` mit Kita-JSX** (`/** @jsxImportSource @kitajs/html */`): TSX-Komponenten, die direkt zu Strings rendern, ohne Virtual DOM. Nutzerinhalte stehen in Elementen mit `safe` (escaped), `bun run lint` prüft das mit `xss-scan`. Der Render-Kontext läuft über `AsyncLocalStorage`. Kein Client-JS auf der Website (Akkordeon = natives `<details name>`) |
+| Frontend-Templating | **`@elysia/html` mit Kita-JSX** (`/** @jsxImportSource @kitajs/html */`): TSX-Komponenten, die direkt zu Strings rendern, ohne Virtual DOM. Nutzerinhalte stehen in Elementen mit `safe` (Kita escaped nur dort), ein Test prüft das Escaping. Der Render-Kontext läuft über `AsyncLocalStorage`. Kein Client-JS auf der Website (Akkordeon = natives `<details name>`) |
 | Admin | Preact + Signals als SPA (nur hier, nicht auf der Website), gebündelt über Bun-HTML-Imports (HMR im Dev, im Binary eingebettet) |
 | Drag & Drop | Native HTML5-DnD, keine Bibliothek (Seitenbaum, Blöcke, Repeater, Galerien) |
 | Bilder | `Bun.Image`: Metadaten, ThumbHash-Platzhalter, WebP-Varianten on demand (Cache in `data/cache`), Drehen |
@@ -27,7 +27,7 @@ Danach `http://localhost:3000/admin` öffnen. Beim ersten Start wird das Admin-K
 | Passwörter | `Bun.password` (argon2id), Sessions in SQLite, Cookie `HttpOnly; SameSite=Strict` |
 | Performance | Gerenderte Seiten werden im Speicher gecacht (inkl. gzip) und bei jeder Änderung invalidiert |
 | Betrieb | Dockerfile (distroless, non-root, Healthcheck), Backup-Download und `cms restore`, Graceful Shutdown, Security-Header, CI über GitHub Actions |
-| Qualität | TypeScript 7 nativ (`bun run typecheck`), Biome und `xss-scan` (`bun run lint`), `bun test`. TypeScript 5.9 liegt nur für `@kitajs/ts-html-plugin` bei, das die JS-API von TS braucht |
+| Qualität | TypeScript 7 nativ (`bun run typecheck`), Biome (`bun run lint`), `bun test` |
 
 ## Konfiguration: `cms.config.json`
 
