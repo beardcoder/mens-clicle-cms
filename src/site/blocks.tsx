@@ -1,6 +1,7 @@
+/** @jsxImportSource @kitajs/html */
 // Block templates. Add a component here (key = block type from cms.config.json) to give a block
 // its own markup — blocks without a template are rendered by <GenericBlock> from their field definitions.
-import type { FunctionComponent } from 'preact'
+// Content is untrusted: text goes into elements marked `safe` (escaped), `bun run lint` runs xss-scan.
 import { config } from '../config'
 import { type ExpandedBlock, expandEntry, type Link } from '../expand'
 import { markdown } from '../html'
@@ -10,20 +11,31 @@ import { A, Html, Img } from './components'
 import { formatDate, useSite } from './context'
 
 export type BlockProps = { data: Data; block: ExpandedBlock }
+export type Template = (props: BlockProps) => JSX.Element
 
-const Heading = ({ text, as: Tag = 'h2' }: { text?: string; as?: 'h2' | 'h3' }) =>
-	text ? <Tag class="block-title">{text}</Tag> : null
+const Heading = ({ text }: { text?: string }) =>
+	text ? (
+		<h2 class="block-title" safe>
+			{text}
+		</h2>
+	) : (
+		''
+	)
 
-const Hero: FunctionComponent<BlockProps> = ({ data }) => (
+const Hero: Template = ({ data }) => (
 	<div class={`hero hero-${data.align ?? 'center'}`} data-has-image={data.image ? '' : undefined}>
 		<Img media={data.image} class="hero-bg" sizes="100vw" eager alt="" />
 		<div class="hero-content">
-			<h1>{data.title}</h1>
-			{data.subtitle && <p class="lead">{data.subtitle}</p>}
+			<h1 safe>{data.title}</h1>
+			{!!data.subtitle && (
+				<p class="lead" safe>
+					{data.subtitle}
+				</p>
+			)}
 			{data.buttons?.length > 0 && (
 				<div class="buttons">
-					{data.buttons.map((b: Data) => (
-						<A key={b._id} link={b.link} class={`button ${b.style === 'secondary' ? 'secondary' : ''}`} />
+					{(data.buttons as Data[]).map((b: Data) => (
+						<A link={b.link} class={`button ${b.style === 'secondary' ? 'secondary' : ''}`} />
 					))}
 				</div>
 			)}
@@ -31,11 +43,11 @@ const Hero: FunctionComponent<BlockProps> = ({ data }) => (
 	</div>
 )
 
-const Text: FunctionComponent<BlockProps> = ({ data }) => <Html html={data.content} />
+const Text: Template = ({ data }) => <Html html={data.content} />
 
-const Markdown: FunctionComponent<BlockProps> = ({ data }) => <Html html={markdown(data.content ?? '')} />
+const Markdown: Template = ({ data }) => <Html html={markdown(data.content ?? '')} />
 
-const TextImage: FunctionComponent<BlockProps> = ({ data }) => (
+const TextImage: Template = ({ data }) => (
 	<div class={`split ${data.position === 'left' ? 'split-reverse' : ''}`}>
 		<div>
 			<Heading text={data.title} />
@@ -46,20 +58,23 @@ const TextImage: FunctionComponent<BlockProps> = ({ data }) => (
 	</div>
 )
 
-const Image: FunctionComponent<BlockProps> = ({ data }) => (
+const Image: Template = ({ data }) => (
 	<figure class={data.wide ? 'wide' : ''}>
 		<Img media={data.image} class="rounded" />
-		{data.caption && <figcaption>{data.caption}</figcaption>}
+		{!!data.caption && <figcaption safe>{data.caption}</figcaption>}
 	</figure>
 )
 
-const Gallery: FunctionComponent<BlockProps> = ({ data }) => (
+const Gallery: Template = ({ data }) => (
 	<>
 		<Heading text={data.title} />
-		<div class="gallery" style={`--cols:${data.columns ?? 3}`}>
+		<div class="gallery" style={`--cols:${Number(data.columns) || 3}`}>
 			{(data.images as Media[]).map((m) => (
-				<a key={m.id} href={m.url} target="_blank" rel="noopener">
-					<Img media={m} sizes={`(max-width: 48rem) 50vw, ${Math.round(70 / (data.columns ?? 3))}rem`} />
+				<a href={m.url} target="_blank" rel="noopener">
+					<Img
+						media={m}
+						sizes={`(max-width: 48rem) 50vw, ${Math.round(70 / (Number(data.columns) || 3))}rem`}
+					/>
 				</a>
 			))}
 		</div>
@@ -74,7 +89,7 @@ const embedUrl = (url = '') => {
 	return null
 }
 
-const Video: FunctionComponent<BlockProps> = ({ data }) => {
+const Video: Template = ({ data }) => {
 	const src = embedUrl(data.url)
 	return (
 		<figure>
@@ -85,23 +100,25 @@ const Video: FunctionComponent<BlockProps> = ({ data }) => {
 					title={data.caption || 'Video'}
 					loading="lazy"
 					allow="autoplay; fullscreen; picture-in-picture"
-					allowFullScreen
+					allowfullscreen
 				/>
 			) : (
-				<a href={data.url}>{data.url}</a>
+				<a href={data.url} safe>
+					{data.url}
+				</a>
 			)}
-			{data.caption && <figcaption>{data.caption}</figcaption>}
+			{!!data.caption && <figcaption safe>{data.caption}</figcaption>}
 		</figure>
 	)
 }
 
-const Accordion: FunctionComponent<BlockProps> = ({ data, block }) => (
+const Accordion: Template = ({ data, block }) => (
 	<>
 		<Heading text={data.title} />
 		<div class="accordion">
-			{data.items.map((item: Data) => (
-				<details key={item._id} name={data.exclusive ? `acc-${block.id}` : undefined}>
-					<summary>{item.question}</summary>
+			{(data.items as Data[]).map((item: Data) => (
+				<details name={data.exclusive ? `acc-${block.id}` : undefined}>
+					<summary safe>{item.question}</summary>
 					<Html html={item.answer} />
 				</details>
 			))}
@@ -109,18 +126,26 @@ const Accordion: FunctionComponent<BlockProps> = ({ data, block }) => (
 	</>
 )
 
-const Cards: FunctionComponent<BlockProps> = ({ data }) => (
+const Cards: Template = ({ data }) => (
 	<>
 		<Heading text={data.title} />
-		{data.intro && <p class="lead">{data.intro}</p>}
-		<div class="grid" style={`--cols:${data.columns ?? 3}`}>
-			{data.items.map((item: Data) => (
-				<article key={item._id} class="card">
+		{!!data.intro && (
+			<p class="lead" safe>
+				{data.intro}
+			</p>
+		)}
+		<div class="grid" style={`--cols:${Number(data.columns) || 3}`}>
+			{(data.items as Data[]).map((item: Data) => (
+				<article class="card">
 					<Img media={item.image} sizes="(max-width: 48rem) 100vw, 25rem" />
 					<div class="card-body">
-						{item.icon && <span class="card-icon">{item.icon}</span>}
-						<h3>{item.title}</h3>
-						{item.text && <p>{item.text}</p>}
+						{!!item.icon && (
+							<span class="card-icon" safe>
+								{item.icon}
+							</span>
+						)}
+						<h3 safe>{item.title}</h3>
+						{!!item.text && <p safe>{item.text}</p>}
 						<A link={item.link} class="more" />
 					</div>
 				</article>
@@ -129,7 +154,7 @@ const Cards: FunctionComponent<BlockProps> = ({ data }) => (
 	</>
 )
 
-const Columns: FunctionComponent<BlockProps> = ({ data }) => (
+const Columns: Template = ({ data }) => (
 	<div class={`columns columns-${data.ratio ?? '1-1'}`}>
 		<div>
 			<Blocks blocks={data.left} />
@@ -140,22 +165,22 @@ const Columns: FunctionComponent<BlockProps> = ({ data }) => (
 	</div>
 )
 
-const Quote: FunctionComponent<BlockProps> = ({ data }) => (
+const Quote: Template = ({ data }) => (
 	<blockquote class="quote">
-		<p>{data.text}</p>
-		{data.author && (
+		<p safe>{data.text}</p>
+		{!!data.author && (
 			<footer>
-				<cite>{data.author}</cite>
-				{data.role && <span>, {data.role}</span>}
+				<cite safe>{data.author}</cite>
+				{!!data.role && <span safe>, {data.role}</span>}
 			</footer>
 		)}
 	</blockquote>
 )
 
-const Cta: FunctionComponent<BlockProps> = ({ data }) => (
+const Cta: Template = ({ data }) => (
 	<div class="cta" style={`--cta:${data.color ?? 'var(--accent)'}`}>
-		<h2>{data.title}</h2>
-		{data.text && <p>{data.text}</p>}
+		<h2 safe>{data.title}</h2>
+		{!!data.text && <p safe>{data.text}</p>}
 		<A link={data.link} class="button inverted" />
 	</div>
 )
@@ -163,25 +188,31 @@ const Cta: FunctionComponent<BlockProps> = ({ data }) => (
 export function EntryCard({ entry, layout }: { entry: ReturnType<typeof expandEntry>; layout: string }) {
 	const { lang } = useSite()
 	const def = config.collections[entry.collection]
-	const date = def?.dateField ? entry.data[def.dateField] : undefined
-	const teaser = entry.data.teaser ?? entry.data.location
+	const date: string | undefined = def?.dateField ? entry.data[def.dateField] : undefined
+	const teaser: string | undefined = entry.data.teaser ?? entry.data.location
 	return (
 		<article class={layout === 'list' ? 'list-item' : 'card'}>
 			{layout !== 'list' && <Img media={entry.data.image} sizes="(max-width: 48rem) 100vw, 25rem" />}
 			<div class="card-body">
-				{date && <time datetime={date}>{formatDate(date, lang)}</time>}
+				{!!date && (
+					<time datetime={date} safe>
+						{formatDate(date, lang)}
+					</time>
+				)}
 				<h3>
-					<a href={entry.url}>{entry.title}</a>
+					<a href={entry.url} safe>
+						{entry.title}
+					</a>
 				</h3>
-				{teaser && <p>{teaser}</p>}
+				{!!teaser && <p safe>{teaser}</p>}
 			</div>
 		</article>
 	)
 }
 
-const CollectionList: FunctionComponent<BlockProps> = ({ data }) => {
+const CollectionList: Template = ({ data }) => {
 	const site = useSite()
-	if (!config.collections[data.collection]) return null
+	if (!config.collections[data.collection]) return ''
 	const { items } = entries.list(data.collection, {
 		status: site.preview ? undefined : 'published',
 		filter: data.filter,
@@ -194,13 +225,13 @@ const CollectionList: FunctionComponent<BlockProps> = ({ data }) => {
 			{items.length ? (
 				<div class={layout === 'list' ? 'list' : 'grid'}>
 					{items.map((e) => (
-						<EntryCard key={e.id} entry={expandEntry(e, site.expand)} layout={layout} />
+						<EntryCard entry={expandEntry(e, site.expand)} layout={layout} />
 					))}
 				</div>
 			) : (
 				<p class="muted">Keine Einträge vorhanden.</p>
 			)}
-			{data.more && (
+			{!!data.more && (
 				<p>
 					<A link={data.more} class="more" />
 				</p>
@@ -209,15 +240,15 @@ const CollectionList: FunctionComponent<BlockProps> = ({ data }) => {
 	)
 }
 
-const RawHtml: FunctionComponent<BlockProps> = ({ data }) => (
-	<div dangerouslySetInnerHTML={{ __html: data.code ?? '' }} />
-)
+/** Deliberately unescaped: the HTML block is for trusted editors */
+const RawHtml: Template = ({ data }) => {
+	const safeCode: string = data.code ?? ''
+	return <div>{safeCode}</div>
+}
 
-const Divider: FunctionComponent<BlockProps> = ({ data }) => (
-	<hr class={`divider divider-${data.space ?? 'm'}`} />
-)
+const Divider: Template = ({ data }) => <hr class={`divider divider-${data.space ?? 'm'}`} />
 
-export const templates: Record<string, FunctionComponent<BlockProps>> = {
+export const templates: Record<string, Template> = {
 	hero: Hero,
 	text: Text,
 	markdown: Markdown,
@@ -236,9 +267,9 @@ export const templates: Record<string, FunctionComponent<BlockProps>> = {
 }
 
 /** Fallback renderer: outputs any field type sensibly, so new JSON-defined blocks work immediately */
-export function FieldValue({ field, value }: { field: Field; value: any }) {
+export function FieldValue({ field, value }: { field: Field; value: any }): JSX.Element {
 	const { lang } = useSite()
-	if (value == null || value === '' || (Array.isArray(value) && !value.length)) return null
+	if (value == null || value === '' || (Array.isArray(value) && !value.length)) return ''
 	switch (field.type) {
 		case 'richtext':
 			return <Html html={value} />
@@ -248,15 +279,15 @@ export function FieldValue({ field, value }: { field: Field; value: any }) {
 			return <Img media={value} class="rounded" />
 		case 'file':
 			return (
-				<a href={value.url} download>
+				<a href={value.url} download="" safe>
 					📎 {value.name}
 				</a>
 			)
 		case 'gallery':
 			return (
 				<div class="gallery">
-					{value.map((m: Media) => (
-						<Img key={m.id} media={m} sizes="33vw" />
+					{(value as Media[]).map((m) => (
+						<Img media={m} sizes="33vw" />
 					))}
 				</div>
 			)
@@ -264,16 +295,20 @@ export function FieldValue({ field, value }: { field: Field; value: any }) {
 			return <A link={value as Link} class="button" />
 		case 'boolean':
 		case 'color':
-			return null
+			return ''
 		case 'date':
 		case 'datetime':
-			return <time datetime={value}>{formatDate(value, lang)}</time>
+			return (
+				<time datetime={value} safe>
+					{formatDate(value, lang)}
+				</time>
+			)
 		case 'tags':
 		case 'multiselect':
 			return (
 				<ul class="tags">
-					{value.map((v: string) => (
-						<li key={v}>{v}</li>
+					{(value as string[]).map((v) => (
+						<li safe>{v}</li>
 					))}
 				</ul>
 			)
@@ -281,19 +316,31 @@ export function FieldValue({ field, value }: { field: Field; value: any }) {
 			return (
 				<ul>
 					{[value].flat().map((e: Data) => (
-						<li key={e.id}>{e.url ? <a href={e.url}>{e.title}</a> : e.title}</li>
+						<li>
+							{e.url ? (
+								<a href={e.url} safe>
+									{e.title}
+								</a>
+							) : (
+								<span safe>{e.title}</span>
+							)}
+						</li>
 					))}
 				</ul>
 			)
 		case 'page':
-			return <a href={value.path}>{value.title}</a>
+			return (
+				<a href={value.path} safe>
+					{value.title}
+				</a>
+			)
 		case 'group':
 			return <Fields fields={field.fields ?? []} data={value} />
 		case 'repeater':
 			return (
 				<div class="stack">
-					{value.map((item: Data) => (
-						<div key={item._id}>
+					{(value as Data[]).map((item) => (
+						<div>
 							<Fields fields={field.fields ?? []} data={item} />
 						</div>
 					))}
@@ -304,23 +351,23 @@ export function FieldValue({ field, value }: { field: Field; value: any }) {
 		case 'code':
 			return (
 				<pre>
-					<code>{value}</code>
+					<code safe>{value}</code>
 				</pre>
 			)
 		default:
-			return field.name === 'title' ? <h2>{value}</h2> : <p>{String(value)}</p>
+			return field.name === 'title' ? <h2 safe>{value}</h2> : <p safe>{String(value)}</p>
 	}
 }
 
 export const Fields = ({ fields, data }: { fields: Field[]; data: Data }) => (
 	<>
 		{fields.map((f) => (
-			<FieldValue key={f.name} field={f} value={data[f.name]} />
+			<FieldValue field={f} value={data[f.name]} />
 		))}
 	</>
 )
 
-const GenericBlock: FunctionComponent<BlockProps> = ({ data, block }) => (
+const GenericBlock: Template = ({ data, block }) => (
 	<Fields fields={config.blocks[block.type]?.fields ?? []} data={data} />
 )
 
@@ -330,7 +377,7 @@ export function Blocks({ blocks }: { blocks: ExpandedBlock[] | undefined }) {
 			{blocks?.map((block) => {
 				const Template = templates[block.type] ?? GenericBlock
 				return (
-					<section key={block.id} id={`b-${block.id.slice(-8)}`} class={`block block-${block.type}`}>
+					<section id={`b-${block.id.slice(-8)}`} class={`block block-${block.type}`}>
 						<Template data={block.data} block={block} />
 					</section>
 				)

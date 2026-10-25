@@ -1,3 +1,4 @@
+import { html } from '@elysia/html'
 import { Elysia, status, t } from 'elysia'
 import { auth } from '../api/auth'
 import { config } from '../config'
@@ -12,9 +13,14 @@ const IMMUTABLE = 'public, max-age=31536000, immutable'
 const cssGzip = Bun.gzipSync(CSS)
 const acceptsGzip = (request: Request) => request.headers.get('accept-encoding')?.includes('gzip') ?? false
 
+// @elysia/html 2.0.0-rc.0 types import a non-exported elysia path and degrade to `any`, which would
+// erase route typing for the whole chain — the plugin only maps HTML strings to responses here.
+const htmlPlugin = html() as unknown as Elysia
+
 const xml = (s: string) => s.replace(/[<>&'"]/g, (c) => `&#${c.charCodeAt(0)};`)
 
 export const site = new Elysia({ name: 'site' })
+	.use(htmlPlugin)
 	.use(auth)
 	.get('/assets/:file', ({ params, request }) => {
 		if (params.file !== `site.${CSS_HASH}.css`) return status(404, 'Not found')
@@ -85,7 +91,7 @@ export const site = new Elysia({ name: 'site' })
 			{ headers: { 'content-type': 'application/xml; charset=utf-8' } },
 		)
 	})
-	.get('/*', ({ request, user, redirect }) => {
+	.get('/*', ({ request, user, redirect, set }) => {
 		const url = new URL(request.url)
 		let path: string
 		try {
@@ -94,15 +100,14 @@ export const site = new Elysia({ name: 'site' })
 			return status(400, 'Bad request')
 		}
 		if (path.length > 1 && path.endsWith('/')) return redirect(path.replace(/\/+$/, '') + url.search, 301)
-		const headers: Record<string, string> = { 'content-type': 'text/html; charset=utf-8' }
-		// Logged-in editors can preview drafts with ?preview
+		// Logged-in editors can preview drafts with ?preview (uncached, @elysia/html sets the content-type)
 		if (user && url.searchParams.has('preview')) {
 			const page = renderPath(path, true)
-			return new Response(page.html, {
-				status: page.status,
-				headers: { ...headers, 'cache-control': 'no-store' },
-			})
+			set.status = page.status
+			set.headers['cache-control'] = 'no-store'
+			return page.html
 		}
+		const headers: Record<string, string> = { 'content-type': 'text/html; charset=utf-8' }
 		const page = renderCached(path)
 		const gzip = acceptsGzip(request)
 		if (gzip) headers['content-encoding'] = 'gzip'

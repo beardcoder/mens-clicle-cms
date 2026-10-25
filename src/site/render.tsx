@@ -1,4 +1,4 @@
-import { renderToString } from 'preact-render-to-string'
+/** @jsxImportSource @kitajs/html */
 import { config } from '../config'
 import { onChange } from '../db'
 import { expand, expandBlocks, expandEntry } from '../expand'
@@ -7,7 +7,7 @@ import { pages } from '../repo/pages'
 import { settings } from '../repo/settings'
 import type { Entry, Page, PageSummary } from '../types'
 import { Blocks } from './blocks'
-import { type NavItem, type Site, SiteContext } from './context'
+import { type NavItem, type Site, withSite } from './context'
 import { EntryView } from './entry'
 import { Layout } from './layout'
 
@@ -54,8 +54,12 @@ function siteContext(path: string, preview: boolean): Site {
 	}
 }
 
-const html = (site: Site, node: preact.VNode) =>
-	`<!doctype html>${renderToString(<SiteContext.Provider value={site}>{node}</SiteContext.Provider>)}`
+/** Templates run synchronously inside the site context; Kita JSX evaluates to a string */
+const html = (site: Site, render: () => JSX.Element) => {
+	const out = withSite(site, render)
+	if (typeof out !== 'string') throw new Error('Async templates are not supported')
+	return `<!doctype html>${out}`
+}
 
 export function renderPath(path: string, preview = false): { status: number; html: string } {
 	const site = siteContext(path, preview)
@@ -63,8 +67,7 @@ export function renderPath(path: string, preview = false): { status: number; htm
 	if (!match)
 		return {
 			status: 404,
-			html: html(
-				site,
+			html: html(site, () => (
 				<Layout title="Seite nicht gefunden">
 					<section class="block not-found">
 						<h1>404</h1>
@@ -73,37 +76,35 @@ export function renderPath(path: string, preview = false): { status: number; htm
 							Zur Startseite
 						</a>
 					</section>
-				</Layout>,
-			),
+				</Layout>
+			)),
 		}
 	if (match.kind === 'entry') {
 		const entry = expandEntry(match.entry, site.expand)
 		const d = entry.data
 		return {
 			status: 200,
-			html: html(
-				site,
+			html: html(site, () => (
 				<Layout title={entry.title} description={d.teaser ?? undefined} image={d.image}>
 					<EntryView entry={entry} />
-				</Layout>,
-			),
+				</Layout>
+			)),
 		}
 	}
 	const { page } = match
 	const data = expand(config.page?.fields ?? [], page.data, site.expand)
 	return {
 		status: 200,
-		html: html(
-			site,
+		html: html(site, () => (
 			<Layout title={page.title} description={data.description} image={data.ogImage}>
 				{!data.hideTitle && (
 					<header class="page-header">
-						<h1>{page.title}</h1>
+						<h1 safe>{page.title}</h1>
 					</header>
 				)}
 				<Blocks blocks={expandBlocks(page.blocks, site.expand)} />
-			</Layout>,
-		),
+			</Layout>
+		)),
 	}
 }
 

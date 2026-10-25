@@ -1,6 +1,6 @@
+/** @jsxImportSource @kitajs/html */
 // Detail templates for collection entries (key = collection name). Collections without a
 // template use <GenericEntry>, which renders all fields from the config.
-import type { FunctionComponent } from 'preact'
 import { config } from '../config'
 import type { expandEntry } from '../expand'
 import type { Data } from '../types'
@@ -9,6 +9,7 @@ import { A, Html, Img } from './components'
 import { formatDate, useSite } from './context'
 
 type EntryProps = { entry: ReturnType<typeof expandEntry> }
+type EntryTemplate = (props: EntryProps) => JSX.Element
 
 const Back = ({ collection }: { collection: string }) => {
 	const route = config.collections[collection]?.route
@@ -16,28 +17,40 @@ const Back = ({ collection }: { collection: string }) => {
 		<a href={route.split('/').slice(0, -1).join('/') || '/'} class="back">
 			← Zurück
 		</a>
-	) : null
+	) : (
+		''
+	)
 }
 
-const News: FunctionComponent<EntryProps> = ({ entry }) => {
+const News: EntryTemplate = ({ entry }) => {
 	const { lang } = useSite()
 	const { data } = entry
 	return (
 		<article class="entry">
 			<header class="entry-header">
 				<p class="meta">
-					<time datetime={data.date}>{formatDate(data.date, lang)}</time>
-					{data.category && <span class="badge">{data.category}</span>}
+					<time datetime={data.date} safe>
+						{formatDate(data.date, lang)}
+					</time>
+					{!!data.category && (
+						<span class="badge" safe>
+							{data.category}
+						</span>
+					)}
 				</p>
-				<h1>{entry.title}</h1>
-				{data.teaser && <p class="lead">{data.teaser}</p>}
+				<h1 safe>{entry.title}</h1>
+				{!!data.teaser && (
+					<p class="lead" safe>
+						{data.teaser}
+					</p>
+				)}
 			</header>
 			<Img media={data.image} class="rounded" eager />
 			<Blocks blocks={data.body} />
 			{data.tags?.length > 0 && (
 				<ul class="tags">
-					{data.tags.map((t: string) => (
-						<li key={t}>{t}</li>
+					{(data.tags as string[]).map((t: string) => (
+						<li safe>{t}</li>
 					))}
 				</ul>
 			)}
@@ -45,8 +58,8 @@ const News: FunctionComponent<EntryProps> = ({ entry }) => {
 				<aside>
 					<h2>Weitere Artikel</h2>
 					<div class="grid">
-						{data.related.map((e: EntryProps['entry']) => (
-							<EntryCard key={e.id} entry={e} layout="cards" />
+						{(data.related as EntryProps['entry'][]).map((e: EntryProps['entry']) => (
+							<EntryCard entry={e} layout="cards" />
 						))}
 					</div>
 				</aside>
@@ -56,38 +69,42 @@ const News: FunctionComponent<EntryProps> = ({ entry }) => {
 	)
 }
 
-const Event: FunctionComponent<EntryProps> = ({ entry }) => {
+const Event: EntryTemplate = ({ entry }) => {
 	const { lang } = useSite()
 	const { data } = entry
+	const price =
+		data.price === 0
+			? 'frei'
+			: new Intl.NumberFormat(lang, { style: 'currency', currency: 'EUR' }).format(data.price)
 	return (
 		<article class="entry">
 			<header class="entry-header">
-				<h1>{entry.title}</h1>
+				<h1 safe>{entry.title}</h1>
 				<dl class="facts">
 					<dt>Wann</dt>
 					<dd>
-						<time datetime={data.start}>{formatDate(data.start, lang)}</time>
-						{data.end && (
+						<time datetime={data.start} safe>
+							{formatDate(data.start, lang)}
+						</time>
+						{!!data.end && (
 							<>
 								{' – '}
-								<time datetime={data.end}>{formatDate(data.end, lang)}</time>
+								<time datetime={data.end} safe>
+									{formatDate(data.end, lang)}
+								</time>
 							</>
 						)}
 					</dd>
-					{data.location && (
+					{!!data.location && (
 						<>
 							<dt>Wo</dt>
-							<dd>{data.location}</dd>
+							<dd safe>{data.location}</dd>
 						</>
 					)}
 					{data.price != null && (
 						<>
 							<dt>Eintritt</dt>
-							<dd>
-								{data.price === 0
-									? 'frei'
-									: new Intl.NumberFormat(lang, { style: 'currency', currency: 'EUR' }).format(data.price)}
-							</dd>
+							<dd safe>{price}</dd>
 						</>
 					)}
 				</dl>
@@ -99,19 +116,19 @@ const Event: FunctionComponent<EntryProps> = ({ entry }) => {
 				<section>
 					<h2>Mitwirkende</h2>
 					<ul class="people">
-						{data.speakers.map((s: Data) => (
-							<li key={s._id}>
+						{(data.speakers as Data[]).map((s: Data) => (
+							<li>
 								<Img media={s.photo} sizes="6rem" />
-								<strong>{s.name}</strong>
-								{s.role && <span>{s.role}</span>}
+								<strong safe>{s.name}</strong>
+								{!!s.role && <span safe>{s.role}</span>}
 							</li>
 						))}
 					</ul>
 				</section>
 			)}
-			{data.attachments && (
+			{!!data.attachments && (
 				<p>
-					<a href={data.attachments.url} class="button secondary" download>
+					<a href={data.attachments.url} class="button secondary" download="" safe>
 						📎 {data.attachments.name}
 					</a>
 				</p>
@@ -121,15 +138,15 @@ const Event: FunctionComponent<EntryProps> = ({ entry }) => {
 	)
 }
 
-const GenericEntry: FunctionComponent<EntryProps> = ({ entry }) => (
+const GenericEntry: EntryTemplate = ({ entry }) => (
 	<article class="entry">
-		<h1>{entry.title}</h1>
+		<h1 safe>{entry.title}</h1>
 		<Fields fields={config.collections[entry.collection]?.fields ?? []} data={entry.data} />
 		<Back collection={entry.collection} />
 	</article>
 )
 
-export const entryTemplates: Record<string, FunctionComponent<EntryProps>> = { news: News, events: Event }
+export const entryTemplates: Record<string, EntryTemplate> = { news: News, events: Event }
 export const EntryView = ({ entry }: EntryProps) => {
 	const Template = entryTemplates[entry.collection] ?? GenericEntry
 	return <Template entry={entry} />

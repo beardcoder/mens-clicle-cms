@@ -1,5 +1,4 @@
-import { createContext } from 'preact'
-import { useContext } from 'preact/hooks'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import type { ExpandOptions } from '../expand'
 import type { Data, PageSummary } from '../types'
 
@@ -16,8 +15,14 @@ export interface Site {
 	expand: ExpandOptions
 }
 
-export const SiteContext = createContext<Site>(null as unknown as Site)
-export const useSite = () => useContext(SiteContext)
+// Request-scoped render context for templates (Kita JSX has no context API)
+const storage = new AsyncLocalStorage<Site>()
+export const withSite = <T>(site: Site, render: () => T) => storage.run(site, render)
+export const useSite = () => {
+	const site = storage.getStore()
+	if (!site) throw new Error('useSite() called outside of a render')
+	return site
+}
 
 export const formatDate = (value: string | undefined, lang: string, withTime = value?.includes('T')) => {
 	if (!value) return ''

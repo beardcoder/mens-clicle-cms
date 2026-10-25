@@ -121,12 +121,32 @@ describe('site', () => {
 		expect((await req('/galerie/')).status).toBe(301)
 	})
 
+	test('escapes user content in templates', async () => {
+		// breaks out of text nodes and quoted attributes if not escaped
+		const evil = '"><img src=x onerror=alert(1)>'
+		await req('/api/collections/news', {
+			method: 'POST',
+			json: {
+				title: evil,
+				slug: 'xss',
+				status: 'published',
+				data: { date: '2026-01-01', teaser: evil, tags: [evil] },
+			},
+		})
+		const html = await (await req('/news/xss')).text()
+		expect(html).not.toContain(evil)
+		expect(html).toContain('<h1>&quot;&gt;&lt;img src=x onerror=alert(1)&gt;</h1>')
+	})
+
 	test('drafts are only visible in preview for editors', async () => {
 		const page = await (await req('/api/pages', { method: 'POST', json: { title: 'Geheim' } })).json()
 		const saved = cookie
 		cookie = ''
 		expect((await req(page.path)).status).toBe(404)
 		cookie = saved
-		expect((await req(`${page.path}?preview`)).status).toBe(200)
+		const preview = await req(`${page.path}?preview`)
+		expect(preview.status).toBe(200)
+		expect(preview.headers.get('content-type')).toStartWith('text/html')
+		expect(await preview.text()).toStartWith('<!doctype html>')
 	})
 })

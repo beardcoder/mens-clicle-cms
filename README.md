@@ -18,14 +18,14 @@ Danach `http://localhost:3000/admin` öffnen. Beim ersten Start wird das Admin-K
 | --- | --- |
 | Server | Elysia 2 (`2.0.0-rc.0`), TypeBox-Validierung, Auth per Macro (`{ auth: true }`) |
 | Datenbank | `bun:sqlite` (WAL, Migrationen über `PRAGMA user_version`), Inhalte als JSON-Spalten |
-| Frontend-Templating | **Preact-TSX mit Server-Side-Rendering** (`preact-render-to-string`): typsicher, escaped automatisch, Komponenten statt String-Templates. Kein Client-JS auf der Website (Akkordeon = natives `<details name>`) |
-| Admin | Preact + Signals als SPA, gebündelt über Bun-HTML-Imports (HMR im Dev, im Binary eingebettet) |
+| Frontend-Templating | **`@elysia/html` mit Kita-JSX** (`/** @jsxImportSource @kitajs/html */`): TSX-Komponenten, die direkt zu Strings rendern, ohne Virtual DOM. Nutzerinhalte stehen in Elementen mit `safe` (escaped), `bun run lint` prüft das mit `xss-scan`. Der Render-Kontext läuft über `AsyncLocalStorage`. Kein Client-JS auf der Website (Akkordeon = natives `<details name>`) |
+| Admin | Preact + Signals als SPA (nur hier, nicht auf der Website), gebündelt über Bun-HTML-Imports (HMR im Dev, im Binary eingebettet) |
 | Drag & Drop | Native HTML5-DnD, keine Bibliothek (Seitenbaum, Blöcke, Repeater, Galerien) |
 | Bilder | `Bun.Image`: Metadaten, ThumbHash-Platzhalter, WebP-Varianten on demand (Cache in `data/cache`), Drehen |
 | Rich Text / Markdown | `HTMLRewriter` als Sanitizer, `Bun.markdown` für Markdown |
 | Passwörter | `Bun.password` (argon2id), Sessions in SQLite, Cookie `HttpOnly; SameSite=Strict` |
 | Performance | Gerenderte Seiten werden im Speicher gecacht (inkl. gzip) und bei jeder Änderung invalidiert |
-| Qualität | TypeScript 7 (`tsc`), Biome (Lint und Format), `bun test` |
+| Qualität | TypeScript 7 nativ (`bun run typecheck`), Biome und `xss-scan` (`bun run lint`), `bun test`. TypeScript 5.9 liegt nur für `@kitajs/ts-html-plugin` bei, das die JS-API von TS braucht |
 
 ## Konfiguration: `cms.config.json`
 
@@ -57,7 +57,7 @@ Gesucht wird in dieser Reihenfolge: `CMS_CONFIG`, dann `./cms.config.json` im Ar
 }
 ```
 
-Ein neuer Block ist sofort im Admin nutzbar und wird ohne eigenes Template automatisch generisch gerendert. Für eigenes Markup legst du in `src/site/blocks.tsx` eine Komponente an (Schlüssel = Blocktyp). Detailseiten von Sammlungen bekommen ihr Template in `src/site/entry.tsx`.
+Ein neuer Block ist sofort im Admin nutzbar und wird ohne eigenes Template automatisch generisch gerendert. Für eigenes Markup legst du in `src/site/blocks.tsx` eine Komponente an (Schlüssel = Blocktyp). Texte aus Inhalten gehören in Elemente mit `safe`, z. B. `<h2 safe>{data.title}</h2>`. Bereits bereinigtes HTML (Rich Text) wird über `<Html html={…} />` ausgegeben. Detailseiten von Sammlungen bekommen ihr Template in `src/site/entry.tsx`.
 
 ### Feldtypen
 
