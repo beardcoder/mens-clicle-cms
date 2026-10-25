@@ -1,0 +1,420 @@
+{
+	"$schema": "./cms.schema.json",
+	"page": {
+		"fields": [
+			{ "name": "description", "type": "textarea", "label": "Meta-Beschreibung", "rows": 2, "max": 160 },
+			{ "name": "ogImage", "type": "image", "label": "Social-Media-Bild", "width": "half" },
+			{ "name": "hideTitle", "type": "boolean", "label": "Seitentitel ausblenden", "width": "half" }
+		]
+	},
+	"blocks": {
+		"hero": {
+			"label": "Hero",
+			"icon": "✨",
+			"category": "Layout",
+			"description": "Großer Einstieg mit Bild und Buttons",
+			"fields": [
+				{ "name": "title", "type": "text", "label": "Titel", "required": true },
+				{ "name": "subtitle", "type": "textarea", "label": "Untertitel", "rows": 2 },
+				{ "name": "image", "type": "image", "label": "Hintergrundbild", "width": "half" },
+				{
+					"name": "align",
+					"type": "select",
+					"label": "Ausrichtung",
+					"width": "half",
+					"default": "center",
+					"options": [{ "value": "left", "label": "Links" }, { "value": "center", "label": "Zentriert" }]
+				},
+				{
+					"name": "buttons",
+					"type": "repeater",
+					"label": "Buttons",
+					"max": 3,
+					"itemLabel": "link",
+					"fields": [
+						{ "name": "link", "type": "link", "label": "Link", "required": true },
+						{
+							"name": "style",
+							"type": "select",
+							"label": "Stil",
+							"default": "primary",
+							"options": [
+								{ "value": "primary", "label": "Primär" },
+								{ "value": "secondary", "label": "Sekundär" }
+							]
+						}
+					]
+				}
+			]
+		},
+		"text": {
+			"label": "Text",
+			"icon": "📝",
+			"category": "Inhalt",
+			"fields": [{ "name": "content", "type": "richtext", "label": "Inhalt", "required": true }]
+		},
+		"markdown": {
+			"label": "Markdown",
+			"icon": "Ⓜ️",
+			"category": "Inhalt",
+			"fields": [{ "name": "content", "type": "markdown", "label": "Inhalt", "rows": 12 }]
+		},
+		"textImage": {
+			"label": "Text & Bild",
+			"icon": "🖼️",
+			"category": "Inhalt",
+			"fields": [
+				{ "name": "title", "type": "text", "label": "Überschrift" },
+				{ "name": "content", "type": "richtext", "label": "Text" },
+				{ "name": "image", "type": "image", "label": "Bild", "width": "half" },
+				{
+					"name": "position",
+					"type": "select",
+					"label": "Bildposition",
+					"width": "half",
+					"default": "right",
+					"options": [{ "value": "left", "label": "Links" }, { "value": "right", "label": "Rechts" }]
+				},
+				{ "name": "link", "type": "link", "label": "Link" }
+			]
+		},
+		"image": {
+			"label": "Bild",
+			"icon": "🏞️",
+			"category": "Medien",
+			"fields": [
+				{ "name": "image", "type": "image", "label": "Bild", "required": true },
+				{ "name": "caption", "type": "text", "label": "Bildunterschrift" },
+				{ "name": "wide", "type": "boolean", "label": "Volle Breite" }
+			]
+		},
+		"gallery": {
+			"label": "Galerie",
+			"icon": "🗂️",
+			"category": "Medien",
+			"fields": [
+				{ "name": "title", "type": "text", "label": "Überschrift" },
+				{ "name": "images", "type": "gallery", "label": "Bilder", "min": 1 },
+				{ "name": "columns", "type": "number", "label": "Spalten", "min": 2, "max": 6, "default": 3 }
+			]
+		},
+		"video": {
+			"label": "Video",
+			"icon": "🎬",
+			"category": "Medien",
+			"fields": [
+				{
+					"name": "url",
+					"type": "url",
+					"label": "YouTube- oder Vimeo-URL",
+					"required": true,
+					"placeholder": "https://www.youtube.com/watch?v=…"
+				},
+				{ "name": "caption", "type": "text", "label": "Bildunterschrift" }
+			]
+		},
+		"accordion": {
+			"label": "Akkordeon",
+			"icon": "🪗",
+			"category": "Inhalt",
+			"fields": [
+				{ "name": "title", "type": "text", "label": "Überschrift" },
+				{
+					"name": "exclusive",
+					"type": "boolean",
+					"label": "Nur ein Eintrag gleichzeitig offen",
+					"default": true
+				},
+				{
+					"name": "items",
+					"type": "repeater",
+					"label": "Einträge",
+					"min": 1,
+					"itemLabel": "question",
+					"fields": [
+						{ "name": "question", "type": "text", "label": "Frage / Titel", "required": true },
+						{ "name": "answer", "type": "richtext", "label": "Antwort / Inhalt" }
+					]
+				}
+			]
+		},
+		"cards": {
+			"label": "Karten",
+			"icon": "🃏",
+			"category": "Layout",
+			"fields": [
+				{ "name": "title", "type": "text", "label": "Überschrift" },
+				{ "name": "intro", "type": "textarea", "label": "Einleitung", "rows": 2 },
+				{
+					"name": "columns",
+					"type": "select",
+					"label": "Spalten",
+					"default": "3",
+					"options": ["2", "3", "4"]
+				},
+				{
+					"name": "items",
+					"type": "repeater",
+					"label": "Karten",
+					"itemLabel": "title",
+					"fields": [
+						{ "name": "icon", "type": "text", "label": "Icon (Emoji)", "width": "third", "max": 4 },
+						{ "name": "title", "type": "text", "label": "Titel", "width": "third", "required": true },
+						{ "name": "image", "type": "image", "label": "Bild", "width": "third" },
+						{ "name": "text", "type": "textarea", "label": "Text", "rows": 3 },
+						{ "name": "link", "type": "link", "label": "Link" }
+					]
+				}
+			]
+		},
+		"columns": {
+			"label": "Spalten",
+			"icon": "🧱",
+			"category": "Layout",
+			"description": "Zwei Spalten mit eigenen Blöcken",
+			"fields": [
+				{
+					"name": "ratio",
+					"type": "select",
+					"label": "Verhältnis",
+					"default": "1-1",
+					"options": [
+						{ "value": "1-1", "label": "50 / 50" },
+						{ "value": "2-1", "label": "66 / 33" },
+						{ "value": "1-2", "label": "33 / 66" }
+					]
+				},
+				{
+					"name": "left",
+					"type": "blocks",
+					"label": "Linke Spalte",
+					"allow": ["text", "markdown", "image", "video", "quote", "html"]
+				},
+				{
+					"name": "right",
+					"type": "blocks",
+					"label": "Rechte Spalte",
+					"allow": ["text", "markdown", "image", "video", "quote", "html"]
+				}
+			]
+		},
+		"quote": {
+			"label": "Zitat",
+			"icon": "💬",
+			"category": "Inhalt",
+			"fields": [
+				{ "name": "text", "type": "textarea", "label": "Zitat", "required": true },
+				{ "name": "author", "type": "text", "label": "Autor:in", "width": "half" },
+				{ "name": "role", "type": "text", "label": "Funktion", "width": "half" }
+			]
+		},
+		"cta": {
+			"label": "Call to Action",
+			"icon": "📣",
+			"category": "Layout",
+			"fields": [
+				{ "name": "title", "type": "text", "label": "Titel", "required": true },
+				{ "name": "text", "type": "textarea", "label": "Text", "rows": 2 },
+				{ "name": "link", "type": "link", "label": "Button" },
+				{ "name": "color", "type": "color", "label": "Hintergrundfarbe", "default": "#4f46e5" }
+			]
+		},
+		"collectionList": {
+			"label": "Sammlungs-Liste",
+			"icon": "📰",
+			"category": "Dynamisch",
+			"description": "Listet News, Veranstaltungen, …",
+			"fields": [
+				{ "name": "title", "type": "text", "label": "Überschrift" },
+				{
+					"name": "collection",
+					"type": "select",
+					"label": "Sammlung",
+					"required": true,
+					"width": "half",
+					"options": [{ "value": "news", "label": "News" }, { "value": "events", "label": "Veranstaltungen" }]
+				},
+				{
+					"name": "filter",
+					"type": "select",
+					"label": "Filter",
+					"width": "half",
+					"default": "all",
+					"options": [
+						{ "value": "all", "label": "Alle" },
+						{ "value": "upcoming", "label": "Kommende" },
+						{ "value": "past", "label": "Vergangene" }
+					]
+				},
+				{
+					"name": "limit",
+					"type": "number",
+					"label": "Anzahl",
+					"min": 1,
+					"max": 100,
+					"default": 6,
+					"width": "half"
+				},
+				{
+					"name": "layout",
+					"type": "select",
+					"label": "Darstellung",
+					"width": "half",
+					"default": "cards",
+					"options": [{ "value": "cards", "label": "Karten" }, { "value": "list", "label": "Liste" }]
+				},
+				{ "name": "more", "type": "link", "label": "Link „Alle anzeigen“" }
+			]
+		},
+		"html": {
+			"label": "HTML",
+			"icon": "🧩",
+			"category": "Experten",
+			"description": "Eigenes HTML (wird ungefiltert ausgegeben)",
+			"fields": [{ "name": "code", "type": "code", "label": "HTML", "rows": 10 }]
+		},
+		"divider": {
+			"label": "Trenner",
+			"icon": "➖",
+			"category": "Layout",
+			"fields": [
+				{ "name": "space", "type": "select", "label": "Abstand", "default": "m", "options": ["s", "m", "l"] }
+			]
+		}
+	},
+	"collections": {
+		"news": {
+			"label": "News",
+			"singular": "News-Artikel",
+			"icon": "📰",
+			"route": "/news",
+			"dateField": "date",
+			"sort": { "field": "date", "order": "desc" },
+			"columns": ["date", "category"],
+			"fields": [
+				{ "name": "date", "type": "date", "label": "Datum", "required": true, "width": "half" },
+				{
+					"name": "category",
+					"type": "select",
+					"label": "Kategorie",
+					"width": "half",
+					"options": ["Allgemein", "Verein", "Presse"]
+				},
+				{ "name": "image", "type": "image", "label": "Titelbild" },
+				{ "name": "teaser", "type": "textarea", "label": "Teaser", "rows": 3, "max": 300 },
+				{ "name": "tags", "type": "tags", "label": "Schlagwörter" },
+				{ "name": "body", "type": "blocks", "label": "Inhalt" },
+				{
+					"name": "related",
+					"type": "relation",
+					"label": "Verwandte Artikel",
+					"collection": "news",
+					"multiple": true
+				}
+			]
+		},
+		"events": {
+			"label": "Veranstaltungen",
+			"singular": "Veranstaltung",
+			"icon": "📅",
+			"route": "/veranstaltungen",
+			"dateField": "start",
+			"sort": { "field": "start", "order": "asc" },
+			"columns": ["start", "location"],
+			"fields": [
+				{ "name": "start", "type": "datetime", "label": "Beginn", "required": true, "width": "half" },
+				{ "name": "end", "type": "datetime", "label": "Ende", "width": "half" },
+				{ "name": "location", "type": "text", "label": "Ort", "width": "half" },
+				{ "name": "price", "type": "number", "label": "Preis (€)", "min": 0, "step": 0.5, "width": "half" },
+				{ "name": "image", "type": "image", "label": "Bild" },
+				{ "name": "description", "type": "richtext", "label": "Beschreibung" },
+				{
+					"name": "speakers",
+					"type": "repeater",
+					"label": "Mitwirkende",
+					"itemLabel": "name",
+					"fields": [
+						{ "name": "name", "type": "text", "label": "Name", "required": true, "width": "half" },
+						{ "name": "role", "type": "text", "label": "Rolle", "width": "half" },
+						{ "name": "photo", "type": "image", "label": "Foto" }
+					]
+				},
+				{ "name": "tickets", "type": "link", "label": "Tickets" },
+				{ "name": "attachments", "type": "file", "label": "Programm (PDF)", "accept": "application/pdf" }
+			]
+		}
+	},
+	"settings": {
+		"general": {
+			"label": "Allgemein",
+			"icon": "⚙️",
+			"fields": [
+				{
+					"name": "siteName",
+					"type": "text",
+					"label": "Name der Website",
+					"required": true,
+					"default": "Mens Circle"
+				},
+				{ "name": "tagline", "type": "text", "label": "Slogan" },
+				{ "name": "logo", "type": "image", "label": "Logo", "width": "half" },
+				{ "name": "accent", "type": "color", "label": "Akzentfarbe", "default": "#4f46e5", "width": "half" },
+				{
+					"name": "lang",
+					"type": "select",
+					"label": "Sprache",
+					"default": "de",
+					"width": "half",
+					"options": [{ "value": "de", "label": "Deutsch" }, { "value": "en", "label": "English" }]
+				},
+				{
+					"name": "titleTemplate",
+					"type": "text",
+					"label": "Titel-Vorlage",
+					"default": "%s · Mens Circle",
+					"width": "half",
+					"help": "%s wird durch den Seitentitel ersetzt"
+				}
+			]
+		},
+		"contact": {
+			"label": "Kontakt",
+			"icon": "📇",
+			"fields": [
+				{ "name": "email", "type": "email", "label": "E-Mail", "width": "half" },
+				{ "name": "phone", "type": "text", "label": "Telefon", "width": "half" },
+				{ "name": "address", "type": "textarea", "label": "Adresse", "rows": 3 },
+				{
+					"name": "social",
+					"type": "repeater",
+					"label": "Social Media",
+					"itemLabel": "network",
+					"fields": [
+						{
+							"name": "network",
+							"type": "select",
+							"label": "Netzwerk",
+							"width": "half",
+							"options": ["Instagram", "Facebook", "Mastodon", "LinkedIn", "YouTube", "TikTok"]
+						},
+						{ "name": "url", "type": "url", "label": "URL", "width": "half", "required": true }
+					]
+				}
+			]
+		},
+		"footer": {
+			"label": "Footer",
+			"icon": "🦶",
+			"fields": [
+				{ "name": "text", "type": "richtext", "label": "Text" },
+				{
+					"name": "links",
+					"type": "repeater",
+					"label": "Links",
+					"itemLabel": "link",
+					"fields": [{ "name": "link", "type": "link", "label": "Link", "required": true }]
+				}
+			]
+		}
+	}
+}
